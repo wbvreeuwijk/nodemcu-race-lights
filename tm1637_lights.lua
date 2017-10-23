@@ -2,7 +2,7 @@ seq_t = tmr.create()
 
 tm1637 = require('tm1637')
 tm1637.init(CLK_PIN, DIO_PIN)
-tm1637.set_brightness(BRIGHTNESS) 
+tm1637.set_brightness(BRIGHTNESS/36) 
 
 beeper = require('beep')
 beeper.init(BEEP_PIN)

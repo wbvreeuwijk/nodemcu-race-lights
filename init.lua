@@ -1,7 +1,6 @@
 print("Traffic light firmware v2.1")
 
-PIN_WIFI_RESET=6
-PIN_BOOT_BYPASS=4
+if(file.exists("config.lua")) then dofile("config.lua") end
 
 gpio.mode(PIN_WIFI_RESET,gpio.INT,gpio.PULLUP)
 gpio.trig(PIN_WIFI_RESET, "down", function(level, when)
@@ -16,7 +15,7 @@ end)
 gpio.mode(PIN_BOOT_BYPASS,gpio.INPUT,gpio.PULLUP)
 if(gpio.read(PIN_BOOT_BYPASS) == 1) then
     print("Starting ...")
-    modules =  {"config.lua","globals.lua","lights.lua","wifi_setup.lua"} 
+    modules =  {"globals.lua",LIGHT_MODULE.."_lights.lua","wifi_setup.lua"} 
     
     for i in pairs(modules) do
         if(file.exists(modules[i])) then 
