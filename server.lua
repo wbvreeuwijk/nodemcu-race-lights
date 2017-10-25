@@ -1,51 +1,71 @@
-client = mqtt.Client("ID"..chipid, 120)
-client:lwt("/lwt", "offline", 0, 0)
-client:on("offline", function(client) 
-    --node.restart() 
-    print("Queue offline, restarting")
-end)
+local M = {}
 
-client:lwt("/lwt", "offline", 0, 0)
+local _client
+local _lights
 
-     
-client:on("offline", function(client) print ("offline") end)
+function M.init()
+    print("Init lights")
+    _lights = require(LIGHT_MODULE.."_lights")
+    _lights.init()
 
--- on publish message receive event
-client:on("message", function(client, topic, data) 
-  print(topic .. ":" .. " msg=" .. data) 
-  if data == "start" then l_start(client)
-  else if data == "abort" then l_pattern(8) 
-  else if data == "clear" then l_clear() 
-  else if data == "safety_car" then l_safety_car() 
-  else if data == "green" then l_pattern(4) 
-  else if data == "stop" then l_pattern(3) 
-  end end end end end end
-end)
+    print("Init mqtt")
+    _client = mqtt.Client("ID"..chipid, 120)
+    _client:lwt("/lwt", "offline", 0, 0)
+    _client:on("offline", function(client) 
+        --node.restart() 
+        print("Queue offline, restarting")
+    end)
 
-action = {
-    start = function(client) lights:start(client) end
-}
+    _client:lwt("/lwt", "offline", 0, 0)
+   
+    _client:on("offline", function(client) print ("offline") end)
 
-client:connect(IP, 1883, 0,
-    function(client)
-        print("Connected")
-        tmr.create():alarm(1000,tmr.ALARM_SINGLE,function()
-            client:subscribe(START_TOPIC, 0,  
-                function(client)   
-                    print("subscribed to START")
-                end)
-             end)
-        tmr.create():alarm(2000,tmr.ALARM_SINGLE,function()
-            client:subscribe(STOP_TOPIC, 0,  
-                function(client)   
-                    print("subscribed to STOP")
-                end)
+    print("Register callback")
+    -- on publish message receive event
+    _client:on("message", function(client, topic, data) 
+      print(topic .. ":" .. " msg=" .. data) 
+      if data == "start" then _lights.start(
+        function() 
+            _client:publish(GO_TOPIC,"start", 0, 0, 
+                function(client) print("sent") 
             end)
-     end,
-     function(client, reason)
-         print("failed reason: " .. reason)
-     end)
+        end)
+      else if data == "abort" then _lights:abort()
+      else if data == "clear" then _lights:clear() 
+      else if data == "safety_car" then _lights:safety_car() 
+      else if data == "green" then _lights:green() 
+      else if data == "stop" then _lights:stop() 
+      end end end end end end
+    end)
+    
+    action = {
+        start = function(client) lights:start(client) end
+    }
+end
 
+function M.start(mqtt_ip)
+    print("Trying to connect to "..mqtt_ip)
+    _client:connect(mqtt_ip, 1883, 0,
+        function(client)
+            print("Connected")
+            tmr.create():alarm(1000,tmr.ALARM_SINGLE,function()
+                client:subscribe(START_TOPIC, 0,  
+                    function(client)   
+                        print("subscribed to START")
+                    end)
+                 end)
+            tmr.create():alarm(2000,tmr.ALARM_SINGLE,function()
+                client:subscribe(STOP_TOPIC, 0,  
+                    function(client)   
+                        print("subscribed to STOP")
+                    end)
+                end)
+         end,
+         function(client, reason)
+             print("failed reason: " .. reason)
+         end)
+end
 
+return M
 
 

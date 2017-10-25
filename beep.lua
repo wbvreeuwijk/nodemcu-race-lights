@@ -5,9 +5,9 @@ local beep_pin
 local SHORT_BEEP=200
 local MEDIUM_BEEP=500
 local LONG_BEEP=1000
+local _tmr
 
 local function beep(d) 
-    local _tmr = tmr.create()
     _tmr:register(d,tmr.ALARM_SINGLE, function() 
             gpio.write(beep_pin,gpio.LOW)
         end)
@@ -16,6 +16,7 @@ local function beep(d)
 end
 
 function M.init(p)
+    _tmr = tmr.create()
     beep_pin = p
     gpio.mode(beep_pin,gpio.OUTPUT)
 end

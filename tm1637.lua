@@ -136,7 +136,7 @@ local function write_byte(b, pos)
 end
 
 function M.column(r, b)
-    write_byte(b,r)
+    write_byte(b,r-1)
 end
 
 function M.init(clk, dio)

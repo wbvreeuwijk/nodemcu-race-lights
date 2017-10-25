@@ -1,89 +1,90 @@
-seq_t = tmr.create()
+local M = {}
 
-tm1637 = require('tm1637')
-tm1637.init(CLK_PIN, DIO_PIN)
-tm1637.set_brightness(BRIGHTNESS/36) 
+local _tmr
 
-beeper = require('beep')
-beeper.init(BEEP_PIN)
+local _tm1637
+local _beeper
 
-function l_clear()
-    seq_t:stop()
-    seq_t:unregister()
-    tm1637.clear()
+function M.init()
+    _tmr = tmr.create()
+    _tm1637 = require('tm1637')
+    _tm1637.init(CLK_PIN, DIO_PIN)
+    _tm1637.set_brightness(BRIGHTNESS) 
+    _beeper = require('beep')
+    _beeper.init(BEEP_PIN)
 end
 
-function l_start(client)
-    seq_t:register(STEP_TIME,tmr.ALARM_SINGLE, 
-        function()
-            for i=0,4 do
-                tm1637.column(i,4)
-            end
-            beeper.medium()
-            seq_t:register(STEP_TIME,tmr.ALARM_SINGLE, 
-                function()
-                    tm1637.column(4,7)
-                    beeper.short()
-                    seq_t:register(STEP_TIME,tmr.ALARM_SINGLE, 
-                        function()
-                            tm1637.column(3,7)
-                            beeper.short()
-                            seq_t:register(STEP_TIME,tmr.ALARM_SINGLE, 
-                                function()
-                                    tm1637.column(2,7)
-                                    beeper.short()
-                                    seq_t:register(STEP_TIME,tmr.ALARM_SINGLE, 
-                                        function()
-                                            tm1637.column(1,7)
-                                            beeper.short()
-                                            seq_t:register(STEP_TIME,tmr.ALARM_SINGLE, 
-                                                function()
-                                                    tm1637.column(0,7)
-                                                    beeper.short()
-                                                    local _r = node.random(2*STEP_TIME,4*STEP_TIME)
-                                                    print("Start in ".._r.." ms.")
-                                                    seq_t:register(_r,tmr.ALARM_SINGLE, 
-                                                        function()
-                                                            beeper.medium()
-                                                            if(not not client) then
-                                                                client:publish(GO_TOPIC,"start", 0, 0, function(client) print("sent") end)
-                                                            end
-                                                            for i=0,4 do
-                                                                tm1637.column(i,4)
-                                                            end
-                                                        end)
-                                                    seq_t:start()
-                                                end)
-                                            seq_t:start()
-                                        end)
-                                    seq_t:start()
-                                end)
-                            seq_t:start()
-                        end)
-                    seq_t:start()
-                end)
-            seq_t:start()
-        end)        
-    seq_t:start()
+function _stop()
+    _tmr:stop()
+    _tmr:unregister()
 end
 
-function l_safety_car()
-    seq_t:register(STEP_TIME,tmr.ALARM_AUTO,
+function M.clear()
+    _stop()
+    _tm1637:clear()
+end
+
+function M.safety_car()
+    _tmr:register(STEP_TIME,tmr.ALARM_AUTO,
         function()
-            for i=0,4 do
-                tm1637.column(i,8)
+            for i=1,NO_LED do
+                _tm1637.column(i,8)
             end
             tmr.delay(STEP_TIME/2)
-            for i=0,4 do
-                tm1637.column(i,0)
+            for i=1,NO_LED do
+                _tm1637.column(i,0)
             end
         end)
-    seq_t:start()
+    _tmr:start()
 end
 
-function l_pattern(c)
-    for i=0,4 do
-        tm1637.column(i,c)
-    end
-    --seq_t:stop()
+function M.stop()
+    _pattern(3) -- BOTTOM TWO RED LEDS
 end
+
+function M.green()
+    _pattern(4) -- MIDDLE ROW GREEN LEDS
+end
+
+function M.abort()
+    _pattern(8) -- TOP ROW YELLOW LEDS
+end
+
+function M.start(callback)
+    local i = NO_LED
+    _pattern(4) -- GREEN LEDS
+    _beeper:medium()
+    tmr.delay(STEP_TIME)
+    _tmr:alarm(STEP_TIME,tmr.ALARM_AUTO, function()
+        print("Step "..i)
+        _tm1637.column(i,7)
+        _beeper:short()
+        if(i == 1) then
+            _tmr:stop()
+            _tmr:unregister()
+            local _r = node.random(2*STEP_TIME,4*STEP_TIME)
+            print("Start in ".._r.." ms.")
+            _tmr:alarm(_r,tmr.ALARM_SINGLE, 
+                function()
+                    _beeper:medium()
+                    if(not (callback == nil)) then
+                        --client:publish(GO_TOPIC,"start", 0, 0, function(client) print("sent") end)
+                        callback()
+                    else
+                        print("Callback is nil")
+                    end
+                    _pattern(4)
+                end)
+        end
+        i = i-1
+    end)
+end
+
+function _pattern(c)
+    _stop()
+    for i=1,NO_LED do
+        _tm1637.column(i,c)
+    end    
+end
+
+return M
