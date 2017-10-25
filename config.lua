@@ -7,8 +7,7 @@ MODULES = {"globals.lua","wifi_setup.lua"}
 
 
 -- Boot pins
-PIN_WIFI_RESET=4
-PIN_BOOT_BYPASS=0
+PIN_WIFI_RESET=7
 
 -- Determines which light interface is to be used
 LIGHT_MODULE="tm1637"
